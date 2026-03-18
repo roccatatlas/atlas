@@ -1,45 +1,34 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import Navbar from '@/components/Navbar'
+import Footer from '@/components/Footer'
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: "ATLAS — The AI Workflow Infrastructure",
-  description:
-    "Discover, compare, and combine 10,000+ AI tools into production-ready workflows. The operating system for building AI systems.",
+  title: 'RunAtlas — Navigate the AI Universe',
+  description: 'Discover, compare, and deploy the best AI tools. Build powerful AI stacks and ship faster.',
+  keywords: ['AI tools', 'AI stack', 'ChatGPT', 'Midjourney', 'AI discovery'],
   openGraph: {
-    title: "ATLAS — The AI Workflow Infrastructure",
-    description:
-      "Discover, compare, and combine 10,000+ AI tools into production-ready workflows.",
-    type: "website",
-    url: "https://runatlas.com",
-    siteName: "ATLAS OS",
+    title: 'RunAtlas — Navigate the AI Universe',
+    description: 'Discover, compare, and deploy the best AI tools.',
+    type: 'website',
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "ATLAS — The AI Workflow Infrastructure",
-    description:
-      "Discover, compare, and combine 10,000+ AI tools into production-ready workflows.",
-  },
-};
+}
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark">
-      <body
-        className={`${inter.variable} font-sans bg-[#010610] text-slate-100 antialiased`}
-      >
+    <html lang="en" className={inter.variable}>
+      <body className="bg-black text-white antialiased font-sans min-h-screen">
         <Navbar />
-        <main className="min-h-screen">{children}</main>
+        <main>{children}</main>
         <Footer />
       </body>
     </html>
-  );
+  )
 }

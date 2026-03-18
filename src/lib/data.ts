@@ -1,116 +1,412 @@
+import { supabase } from './supabase'
+
+// ─── TypeScript Interfaces ──────────────────────────────────────────────────
+
 export interface Tool {
-  id: number;
-  name: string;
-  slug: string;
-  description: string;
-  category: string;
-  pricing: string;
-  logo: string;
-  rating: number;
-  users: string;
-  api_available: boolean;
-  open_source: boolean;
-  deploy: string;
-  integrations: number;
-  context_window: string;
-  company: string;
-  atlas_score: number;
+  id: string
+  slug: string
+  name: string
+  description: string
+  category: string
+  company: string
+  pricing: string
+  pricing_num: number | null
+  logo: string | null
+  rating: number | null
+  users: string | null
+  api_available: boolean
+  open_source: boolean
+  deploy: string | null
+  integrations: string[] | null
+  context_window: number | null
+  affiliate_url: string | null
+  atlas_score: number | null
+  monthly_visitors: number | null
+  github_stars: number | null
+  website_url: string | null
+  sponsored_tier: string | null
+  tags: string[]
+  use_cases: string[]
+  status: string
+}
+
+export interface Category {
+  id: number
+  slug: string
+  name: string
+  super_cat: string | null
+  description: string | null
+  tool_count: number
+  icon: string | null
+  display_order: number
+  status: string
 }
 
 export interface StackStep {
-  tool_name: string;
-  role: string;
-  action: string;
-  step_order: number;
+  id: string
+  stack_id: string
+  tool_name: string
+  role: string
+  action: string
+  step_order: number
 }
 
 export interface Stack {
-  id: number;
-  slug: string;
-  title: string;
-  goal: string;
-  difficulty: string;
-  cost_monthly: number;
-  views: number;
-  clones: number;
-  steps: StackStep[];
+  id: string
+  slug: string
+  title: string
+  goal: string
+  description: string
+  difficulty: string
+  cost_monthly: number | null
+  views: number
+  clones: number
+  is_public: boolean
+  status: string
+  steps?: StackStep[]
 }
 
-export const CATEGORIES = [
-  "All","Writing","Image","Video","Audio","Research","Automation","Productivity","Coding",
-];
+export interface Comparison {
+  id: string
+  tool_a_id: string
+  tool_b_id: string
+  slug: string
+  verdict: string | null
+  content_json: Record<string, unknown> | null
+  views: number
+  tool_a?: { name: string; slug: string; logo: string | null }
+  tool_b?: { name: string; slug: string; logo: string | null }
+}
 
-export const MOCK_TOOLS: Tool[] = [
-  {id:1,name:"ChatGPT",slug:"chatgpt",description:"Advanced conversational AI for writing, analysis, coding, and general-purpose intelligence tasks. Supports GPT-4 Turbo with 128k context.",category:"Writing",pricing:"Freemium — $20/mo Pro",logo:"🤖",rating:4.8,users:"200M+",api_available:true,open_source:false,deploy:"Cloud",integrations:5000,context_window:"128k tokens",company:"OpenAI",atlas_score:97},
-  {id:2,name:"Claude",slug:"claude",description:"Anthropic's AI assistant focused on safety and helpfulness. Excels at long-form analysis, coding, and nuanced writing with 200k context.",category:"Writing",pricing:"Freemium — $20/mo Pro",logo:"🧠",rating:4.7,users:"50M+",api_available:true,open_source:false,deploy:"Cloud",integrations:800,context_window:"200k tokens",company:"Anthropic",atlas_score:96},
-  {id:3,name:"Midjourney",slug:"midjourney",description:"Industry-leading AI image generation through text prompts. Creates photorealistic and artistic images with unmatched aesthetic quality.",category:"Image",pricing:"$10 — $120/mo",logo:"🎨",rating:4.9,users:"16M+",api_available:false,open_source:false,deploy:"Cloud (Discord)",integrations:50,context_window:"N/A",company:"Midjourney Inc",atlas_score:94},
-  {id:4,name:"Runway",slug:"runway",description:"AI-powered creative suite for video generation and editing. Features Gen-2 text-to-video, motion brush, and professional editing tools.",category:"Video",pricing:"Freemium — $12-76/mo",logo:"🎬",rating:4.5,users:"5M+",api_available:true,open_source:false,deploy:"Cloud",integrations:120,context_window:"N/A",company:"Runway AI",atlas_score:91},
-  {id:5,name:"ElevenLabs",slug:"elevenlabs",description:"State-of-the-art AI voice synthesis and cloning. Generate natural-sounding speech in 29 languages with emotional control.",category:"Audio",pricing:"Freemium — $5-330/mo",logo:"🎙️",rating:4.7,users:"3M+",api_available:true,open_source:false,deploy:"Cloud",integrations:200,context_window:"N/A",company:"ElevenLabs",atlas_score:93},
-  {id:6,name:"Cursor",slug:"cursor",description:"AI-first code editor built on VS Code. Features intelligent autocomplete, codebase-aware chat, and multi-file editing with AI.",category:"Coding",pricing:"Freemium — $20/mo Pro",logo:"⌨️",rating:4.8,users:"2M+",api_available:false,open_source:false,deploy:"Desktop",integrations:1000,context_window:"Full codebase",company:"Anysphere",atlas_score:95},
-  {id:7,name:"Perplexity",slug:"perplexity",description:"AI-powered search engine that provides cited, real-time answers. Combines LLM intelligence with live web search for accurate research.",category:"Research",pricing:"Freemium — $20/mo Pro",logo:"🔍",rating:4.6,users:"15M+",api_available:true,open_source:false,deploy:"Cloud",integrations:150,context_window:"N/A",company:"Perplexity AI",atlas_score:92},
-  {id:8,name:"Zapier",slug:"zapier",description:"No-code automation platform connecting 6,000+ apps. Build complex workflows with AI-powered triggers, actions, and conditional logic.",category:"Automation",pricing:"Freemium — $19-99/mo",logo:"⚡",rating:4.5,users:"2.2M+",api_available:true,open_source:false,deploy:"Cloud",integrations:6000,context_window:"N/A",company:"Zapier",atlas_score:90},
-  {id:9,name:"Notion AI",slug:"notion-ai",description:"AI writing and knowledge assistant embedded in Notion workspace. Summarize, brainstorm, draft, and translate within your documents.",category:"Productivity",pricing:"$10/mo per member",logo:"📝",rating:4.4,users:"30M+",api_available:true,open_source:false,deploy:"Cloud",integrations:300,context_window:"N/A",company:"Notion Labs",atlas_score:88},
-  {id:10,name:"Stable Diffusion",slug:"stable-diffusion",description:"Open-source image generation model. Run locally or in the cloud with full control over fine-tuning, LoRAs, and custom pipelines.",category:"Image",pricing:"Free (Open Source)",logo:"🖼️",rating:4.5,users:"10M+",api_available:true,open_source:true,deploy:"Self-hosted / Cloud",integrations:500,context_window:"N/A",company:"Stability AI",atlas_score:89},
-  {id:11,name:"Jasper",slug:"jasper",description:"Enterprise AI marketing platform for brand-consistent content creation. Generate ads, blog posts, social media, and marketing copy at scale.",category:"Writing",pricing:"$39-125/mo",logo:"✍️",rating:4.3,users:"100K+",api_available:true,open_source:false,deploy:"Cloud",integrations:250,context_window:"N/A",company:"Jasper AI",atlas_score:85},
-  {id:12,name:"Synthesia",slug:"synthesia",description:"AI video generation platform with realistic digital avatars. Create training videos, marketing content, and presentations without cameras.",category:"Video",pricing:"$22-67/mo",logo:"🎥",rating:4.4,users:"50K+",api_available:true,open_source:false,deploy:"Cloud",integrations:100,context_window:"N/A",company:"Synthesia Ltd",atlas_score:87},
-];
+// ─── Fallback Demo Data ─────────────────────────────────────────────────────
 
-export const MOCK_STACKS: Stack[] = [
-  {id:1,slug:"youtube-automation",title:"YouTube Automation Pipeline",goal:"Automate YouTube content creation from ideation to publishing",difficulty:"Intermediate",cost_monthly:85,views:12400,clones:890,steps:[
-    {tool_name:"Perplexity",role:"Research Engine",action:"Research trending topics and competitor analysis",step_order:1},
-    {tool_name:"ChatGPT",role:"Script Writer",action:"Generate video scripts with hooks and CTAs",step_order:2},
-    {tool_name:"ElevenLabs",role:"Voice Generator",action:"Convert scripts to natural voiceover audio",step_order:3},
-    {tool_name:"Runway",role:"Video Producer",action:"Generate B-roll footage and visual effects",step_order:4},
-    {tool_name:"Midjourney",role:"Thumbnail Creator",action:"Design click-worthy thumbnails",step_order:5},
-  ]},
-  {id:2,slug:"saas-landing-page",title:"SaaS Landing Page Builder",goal:"Design and build a high-converting SaaS landing page with AI",difficulty:"Beginner",cost_monthly:40,views:8300,clones:620,steps:[
-    {tool_name:"ChatGPT",role:"Copywriter",action:"Generate compelling headlines and page copy",step_order:1},
-    {tool_name:"Midjourney",role:"Visual Designer",action:"Create hero images and section graphics",step_order:2},
-    {tool_name:"Cursor",role:"Developer",action:"Code the landing page with AI-assisted development",step_order:3},
-    {tool_name:"Jasper",role:"SEO Optimizer",action:"Optimize meta tags and content for search engines",step_order:4},
-  ]},
-  {id:3,slug:"podcast-production",title:"AI Podcast Production",goal:"Produce a professional podcast from research to distribution",difficulty:"Intermediate",cost_monthly:60,views:5600,clones:340,steps:[
-    {tool_name:"Perplexity",role:"Researcher",action:"Deep research on episode topics with citations",step_order:1},
-    {tool_name:"Claude",role:"Script Developer",action:"Write detailed episode outlines and talking points",step_order:2},
-    {tool_name:"ElevenLabs",role:"Audio Engine",action:"Generate intro/outro and voice segments",step_order:3},
-    {tool_name:"ChatGPT",role:"Show Notes Writer",action:"Create show notes, timestamps, and summaries",step_order:4},
-    {tool_name:"Zapier",role:"Distributor",action:"Auto-publish to Spotify, Apple Podcasts, and social",step_order:5},
-  ]},
-  {id:4,slug:"ai-coding-workflow",title:"AI Coding Workflow",goal:"Ship production code faster with AI-assisted development",difficulty:"Advanced",cost_monthly:45,views:18200,clones:1200,steps:[
-    {tool_name:"Perplexity",role:"Technical Researcher",action:"Research best practices, libraries, and architecture patterns",step_order:1},
-    {tool_name:"Claude",role:"Architect",action:"Design system architecture and data models",step_order:2},
-    {tool_name:"Cursor",role:"AI Pair Programmer",action:"Write, refactor, and debug code with AI assistance",step_order:3},
-    {tool_name:"ChatGPT",role:"Code Reviewer",action:"Review code for bugs, security issues, and improvements",step_order:4},
-    {tool_name:"Notion AI",role:"Documentation",action:"Generate API docs, READMEs, and technical specs",step_order:5},
-    {tool_name:"Zapier",role:"CI/CD Connector",action:"Automate deployment notifications and monitoring",step_order:6},
-  ]},
-];
+const FALLBACK_TOOLS: Tool[] = [
+  {
+    id: 'fallback-1',
+    slug: 'chatgpt',
+    name: 'ChatGPT',
+    description: 'The most popular AI assistant for writing, coding, analysis, and more.',
+    category: 'llm',
+    company: 'OpenAI',
+    pricing: 'freemium',
+    pricing_num: 20,
+    logo: null,
+    rating: 4.8,
+    users: '100M+',
+    api_available: true,
+    open_source: false,
+    deploy: 'cloud',
+    integrations: ['Zapier', 'Slack', 'Microsoft 365'],
+    context_window: 128000,
+    affiliate_url: null,
+    atlas_score: 98,
+    monthly_visitors: 1500000000,
+    github_stars: null,
+    website_url: 'https://chat.openai.com',
+    sponsored_tier: null,
+    tags: ['chatbot', 'writing', 'coding', 'analysis'],
+    use_cases: ['Content creation', 'Code generation', 'Data analysis'],
+    status: 'active',
+  },
+  {
+    id: 'fallback-2',
+    slug: 'midjourney',
+    name: 'Midjourney',
+    description: 'AI image generation tool producing stunning artistic visuals.',
+    category: 'image-gen',
+    company: 'Midjourney',
+    pricing: 'paid',
+    pricing_num: 10,
+    logo: null,
+    rating: 4.7,
+    users: '15M+',
+    api_available: false,
+    open_source: false,
+    deploy: 'cloud',
+    integrations: ['Discord'],
+    context_window: null,
+    affiliate_url: null,
+    atlas_score: 94,
+    monthly_visitors: 50000000,
+    github_stars: null,
+    website_url: 'https://midjourney.com',
+    sponsored_tier: null,
+    tags: ['image', 'art', 'design', 'creative'],
+    use_cases: ['Art creation', 'Marketing visuals', 'Concept design'],
+    status: 'active',
+  },
+  {
+    id: 'fallback-3',
+    slug: 'cursor',
+    name: 'Cursor',
+    description: 'AI-powered code editor built for pair programming with AI.',
+    category: 'coding',
+    company: 'Anysphere',
+    pricing: 'freemium',
+    pricing_num: 20,
+    logo: null,
+    rating: 4.9,
+    users: '1M+',
+    api_available: false,
+    open_source: false,
+    deploy: 'desktop',
+    integrations: ['GitHub', 'GitLab'],
+    context_window: null,
+    affiliate_url: null,
+    atlas_score: 97,
+    monthly_visitors: 10000000,
+    github_stars: null,
+    website_url: 'https://cursor.sh',
+    sponsored_tier: null,
+    tags: ['coding', 'IDE', 'developer', 'productivity'],
+    use_cases: ['Code generation', 'Debugging', 'Refactoring'],
+    status: 'active',
+  },
+  {
+    id: 'fallback-4',
+    slug: 'claude',
+    name: 'Claude',
+    description: 'Anthropic\'s AI assistant focused on safety and nuanced reasoning.',
+    category: 'llm',
+    company: 'Anthropic',
+    pricing: 'freemium',
+    pricing_num: 20,
+    logo: null,
+    rating: 4.7,
+    users: '10M+',
+    api_available: true,
+    open_source: false,
+    deploy: 'cloud',
+    integrations: ['Slack', 'Zapier'],
+    context_window: 200000,
+    affiliate_url: null,
+    atlas_score: 96,
+    monthly_visitors: 80000000,
+    github_stars: null,
+    website_url: 'https://claude.ai',
+    sponsored_tier: null,
+    tags: ['chatbot', 'writing', 'analysis', 'safety'],
+    use_cases: ['Long document analysis', 'Writing', 'Research'],
+    status: 'active',
+  },
+]
 
-export function getTools(opts?: { category?: string; search?: string }): Tool[] {
-  let tools = [...MOCK_TOOLS];
-  if (opts?.category && opts.category !== "All") {
-    tools = tools.filter((t) => t.category === opts.category);
+const FALLBACK_CATEGORIES: Category[] = [
+  { id: 1, slug: 'llm', name: 'Language Models', super_cat: 'AI Core', description: 'Large language models and chatbots', tool_count: 24, icon: '🧠', display_order: 1, status: 'active' },
+  { id: 2, slug: 'image-gen', name: 'Image Generation', super_cat: 'Creative AI', description: 'AI image and art generation tools', tool_count: 18, icon: '🎨', display_order: 2, status: 'active' },
+  { id: 3, slug: 'coding', name: 'Coding Assistants', super_cat: 'Dev Tools', description: 'AI-powered coding and developer tools', tool_count: 15, icon: '💻', display_order: 3, status: 'active' },
+  { id: 4, slug: 'productivity', name: 'Productivity', super_cat: 'Workflows', description: 'Automate tasks and boost productivity', tool_count: 20, icon: '⚡', display_order: 4, status: 'active' },
+]
+
+const FALLBACK_STACKS: Stack[] = [
+  {
+    id: 'stack-1',
+    slug: 'saas-mvp-stack',
+    title: 'SaaS MVP Builder',
+    goal: 'Build a SaaS product from idea to launch',
+    description: 'A battle-tested stack for solo founders building their first SaaS.',
+    difficulty: 'intermediate',
+    cost_monthly: 60,
+    views: 1240,
+    clones: 87,
+    is_public: true,
+    status: 'approved',
+    steps: [
+      { id: 's1', stack_id: 'stack-1', tool_name: 'ChatGPT', role: 'Ideation', action: 'Validate your idea and write copy', step_order: 1 },
+      { id: 's2', stack_id: 'stack-1', tool_name: 'Cursor', role: 'Development', action: 'Build the product with AI assistance', step_order: 2 },
+      { id: 's3', stack_id: 'stack-1', tool_name: 'Midjourney', role: 'Design', action: 'Generate brand visuals', step_order: 3 },
+    ],
+  },
+]
+
+// ─── Data Fetching Functions ────────────────────────────────────────────────
+
+export async function getTools(): Promise<Tool[]> {
+  try {
+    const { data, error } = await supabase
+      .from('tools')
+      .select('*')
+      .eq('status', 'active')
+      .order('atlas_score', { ascending: false })
+
+    if (error) throw error
+    if (!data || data.length === 0) return FALLBACK_TOOLS
+
+    return data as Tool[]
+  } catch (err) {
+    console.error('[getTools] Supabase error, using fallback:', err)
+    return FALLBACK_TOOLS
   }
-  if (opts?.search) {
-    const q = opts.search.toLowerCase();
-    tools = tools.filter(
-      (t) =>
-        t.name.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q) ||
-        t.category.toLowerCase().includes(q)
-    );
+}
+
+export async function getToolBySlug(slug: string): Promise<Tool | null> {
+  try {
+    const { data, error } = await supabase
+      .from('tools')
+      .select('*')
+      .eq('slug', slug)
+      .single()
+
+    if (error) throw error
+    return data as Tool
+  } catch (err) {
+    console.error(`[getToolBySlug] Error for slug "${slug}", using fallback:`, err)
+    return FALLBACK_TOOLS.find((t) => t.slug === slug) ?? null
   }
-  return tools;
 }
 
-export function getToolBySlug(slug: string): Tool | undefined {
-  return MOCK_TOOLS.find((t) => t.slug === slug);
+export async function getToolsByCategory(category: string): Promise<Tool[]> {
+  try {
+    const { data, error } = await supabase
+      .from('tools')
+      .select('*')
+      .eq('category', category)
+      .eq('status', 'active')
+      .order('atlas_score', { ascending: false })
+
+    if (error) throw error
+    if (!data || data.length === 0) return FALLBACK_TOOLS.filter((t) => t.category === category)
+
+    return data as Tool[]
+  } catch (err) {
+    console.error(`[getToolsByCategory] Error for category "${category}":`, err)
+    return FALLBACK_TOOLS.filter((t) => t.category === category)
+  }
 }
 
-export function getStacks(): Stack[] {
-  return [...MOCK_STACKS];
+export async function getCategories(): Promise<Category[]> {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('status', 'active')
+      .order('display_order', { ascending: true })
+
+    if (error) throw error
+    if (!data || data.length === 0) return FALLBACK_CATEGORIES
+
+    return data as Category[]
+  } catch (err) {
+    console.error('[getCategories] Supabase error, using fallback:', err)
+    return FALLBACK_CATEGORIES
+  }
 }
 
-export function getStackBySlug(slug: string): Stack | undefined {
-  return MOCK_STACKS.find((s) => s.slug === slug);
+export async function getStacks(): Promise<Stack[]> {
+  try {
+    const { data, error } = await supabase
+      .from('stacks')
+      .select('*')
+      .eq('is_public', true)
+      .eq('status', 'approved')
+      .order('views', { ascending: false })
+
+    if (error) throw error
+    if (!data || data.length === 0) return FALLBACK_STACKS
+
+    return data as Stack[]
+  } catch (err) {
+    console.error('[getStacks] Supabase error, using fallback:', err)
+    return FALLBACK_STACKS
+  }
+}
+
+export async function getStackBySlug(slug: string): Promise<Stack | null> {
+  try {
+    const { data: stackData, error: stackError } = await supabase
+      .from('stacks')
+      .select('*')
+      .eq('slug', slug)
+      .single()
+
+    if (stackError) throw stackError
+
+    const { data: steps, error: stepsError } = await supabase
+      .from('stack_steps')
+      .select('*')
+      .eq('stack_id', stackData.id)
+      .order('step_order', { ascending: true })
+
+    if (stepsError) console.warn('[getStackBySlug] Could not fetch steps:', stepsError)
+
+    return { ...stackData, steps: steps ?? [] } as Stack
+  } catch (err) {
+    console.error(`[getStackBySlug] Error for slug "${slug}", using fallback:`, err)
+    return FALLBACK_STACKS.find((s) => s.slug === slug) ?? null
+  }
+}
+
+export async function getComparisons(): Promise<Comparison[]> {
+  try {
+    const { data, error } = await supabase
+      .from('tool_comparisons')
+      .select(`
+        *,
+        tool_a:tool_a_id ( name, slug, logo ),
+        tool_b:tool_b_id ( name, slug, logo )
+      `)
+      .order('views', { ascending: false })
+
+    if (error) throw error
+    return (data ?? []) as Comparison[]
+  } catch (err) {
+    console.error('[getComparisons] Supabase error:', err)
+    return []
+  }
+}
+
+export async function searchTools(query: string): Promise<Tool[]> {
+  if (!query.trim()) return []
+
+  try {
+    const { data, error } = await supabase
+      .from('tools')
+      .select('*')
+      .eq('status', 'active')
+      .ilike('name', `%${query}%`)
+      .order('atlas_score', { ascending: false })
+      .limit(20)
+
+    if (error) throw error
+    if (!data || data.length === 0) {
+      // Fallback: filter local fallback data
+      return FALLBACK_TOOLS.filter((t) =>
+        t.name.toLowerCase().includes(query.toLowerCase()) ||
+        t.description.toLowerCase().includes(query.toLowerCase())
+      )
+    }
+
+    return data as Tool[]
+  } catch (err) {
+    console.error('[searchTools] Supabase error:', err)
+    return FALLBACK_TOOLS.filter((t) =>
+      t.name.toLowerCase().includes(query.toLowerCase())
+    )
+  }
+}
+
+export async function getRelatedTools(toolId: string): Promise<Tool[]> {
+  try {
+    const { data: integrations, error: intError } = await supabase
+      .from('tool_integrations')
+      .select('integrates_with_id')
+      .eq('tool_id', toolId)
+
+    if (intError) throw intError
+    if (!integrations || integrations.length === 0) return []
+
+    const relatedIds = integrations.map((i) => i.integrates_with_id)
+
+    const { data, error } = await supabase
+      .from('tools')
+      .select('*')
+      .in('id', relatedIds)
+      .eq('status', 'active')
+
+    if (error) throw error
+    return (data ?? []) as Tool[]
+  } catch (err) {
+    console.error(`[getRelatedTools] Error for toolId "${toolId}":`, err)
+    return []
+  }
 }

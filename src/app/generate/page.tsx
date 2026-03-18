@@ -1,268 +1,255 @@
-"use client";
+'use client'
 
-import { useState } from "react";
+import { useState, useEffect } from 'react'
+import { Tool } from '@/lib/data'
+import { supabase } from '@/lib/supabase'
+import ToolCard from '@/components/ToolCard'
 
-interface GeneratedStep {
-  tool: string;
-  role: string;
-  action: string;
-  why: string;
-}
+const GOALS = [
+  'Build a SaaS MVP',
+  'Automate content creation',
+  'Build a developer tool',
+  'Launch an e-commerce store',
+  'Run a marketing campaign',
+  'Analyse research data',
+  'Build a mobile app',
+  'Grow an audience',
+]
+
+const BUDGETS = [
+  { label: 'Free only', max: 0 },
+  { label: 'Under $50/mo', max: 50 },
+  { label: 'Under $200/mo', max: 200 },
+  { label: 'No limit', max: Infinity },
+]
+
+const EXPERIENCE_LEVELS = ['beginner', 'intermediate', 'advanced'] as const
 
 interface GeneratedStack {
-  title: string;
-  summary: string;
-  difficulty: string;
-  time: string;
-  cost: string;
-  wsr: number;
-  steps: GeneratedStep[];
-  pro_tip: string;
-  moat: string;
-}
-
-const EXAMPLES = [
-  "YouTube channel automation",
-  "SaaS landing page",
-  "Podcast production",
-  "AI coding workflow",
-  "Content marketing pipeline",
-];
-
-const MOCK_RESULTS: Record<string, GeneratedStack> = {
-  default: {
-    title: "AI Content Automation Stack",
-    summary: "A production-ready workflow combining research, writing, visual generation, and distribution tools to create and publish high-quality content at scale.",
-    difficulty: "Intermediate",
-    time: "2-3 hours setup",
-    cost: "$75/mo",
-    wsr: 94,
-    steps: [
-      { tool: "Perplexity", role: "Research Engine", action: "Research topics, trends, and competitor content with real-time citations", why: "Provides accurate, cited research faster than manual browsing" },
-      { tool: "Claude", role: "Strategy Planner", action: "Create content calendar, outlines, and editorial strategy", why: "Excels at long-form strategic thinking with 200k context" },
-      { tool: "ChatGPT", role: "Content Writer", action: "Draft articles, social posts, and marketing copy", why: "Best general-purpose writing with strong creative range" },
-      { tool: "Midjourney", role: "Visual Creator", action: "Generate featured images, social graphics, and illustrations", why: "Industry-leading image quality and aesthetic control" },
-      { tool: "Zapier", role: "Distribution Hub", action: "Auto-publish to WordPress, social media, and email platforms", why: "Connects 6,000+ apps for seamless automation" },
-    ],
-    pro_tip: "Set up Zapier webhooks to trigger content generation automatically when new research topics are identified.",
-    moat: "This stack combines the strongest AI tools in each category, creating a workflow that would take a 5-person team to replicate manually.",
-  },
-  youtube: {
-    title: "YouTube Automation Pipeline",
-    summary: "End-to-end YouTube content machine: from topic research to thumbnail generation, voice synthesis, and video production — all AI-powered.",
-    difficulty: "Intermediate",
-    time: "3-4 hours setup",
-    cost: "$85/mo",
-    wsr: 96,
-    steps: [
-      { tool: "Perplexity", role: "Trend Scanner", action: "Identify trending topics with search volume data", why: "Real-time search delivers fresher trends than static databases" },
-      { tool: "ChatGPT", role: "Script Writer", action: "Write engaging video scripts with hooks and CTAs", why: "GPT-4 produces the most natural-sounding YouTube scripts" },
-      { tool: "ElevenLabs", role: "Voice Generator", action: "Convert scripts to natural voiceover in your cloned voice", why: "Most realistic voice cloning with emotional range" },
-      { tool: "Runway", role: "Video Producer", action: "Generate B-roll footage and visual transitions", why: "Gen-2 produces the highest quality AI video clips" },
-      { tool: "Midjourney", role: "Thumbnail Creator", action: "Design high-CTR thumbnails with consistent style", why: "Unmatched aesthetic quality for eye-catching thumbnails" },
-    ],
-    pro_tip: "Clone your voice in ElevenLabs once, then use the API to batch-generate voiceovers for multiple scripts simultaneously.",
-    moat: "This pipeline reduces video production from 20+ hours to under 3 hours while maintaining professional quality.",
-  },
-  saas: {
-    title: "SaaS Landing Page Stack",
-    summary: "AI-powered workflow to research, design, code, and optimize a high-converting SaaS landing page in a single sprint.",
-    difficulty: "Beginner",
-    time: "1-2 hours setup",
-    cost: "$40/mo",
-    wsr: 92,
-    steps: [
-      { tool: "Perplexity", role: "Market Researcher", action: "Analyze competitor landing pages and positioning", why: "Provides cited competitive analysis in minutes" },
-      { tool: "ChatGPT", role: "Copywriter", action: "Generate headlines, value props, and page copy", why: "Best at producing multiple copy variations quickly" },
-      { tool: "Midjourney", role: "Visual Designer", action: "Create hero images and section illustrations", why: "Produces professional-grade visuals without a designer" },
-      { tool: "Cursor", role: "Developer", action: "Code the landing page with AI-assisted development", why: "AI-first editor ships code 10x faster" },
-    ],
-    pro_tip: "Use ChatGPT to generate 10 headline variations, then A/B test the top 3 with real traffic.",
-    moat: "Skip the $5K agency cost. This stack lets a solo founder build a professional landing page in a single afternoon.",
-  },
-  podcast: {
-    title: "AI Podcast Production Pipeline",
-    summary: "Comprehensive podcast workflow from research and scripting through AI voice generation to automated multi-platform distribution.",
-    difficulty: "Intermediate",
-    time: "2-3 hours setup",
-    cost: "$60/mo",
-    wsr: 91,
-    steps: [
-      { tool: "Perplexity", role: "Deep Researcher", action: "Research episode topics with academic-quality citations", why: "Delivers comprehensive research with source links" },
-      { tool: "Claude", role: "Script Developer", action: "Write detailed episode scripts with natural dialogue flow", why: "200k context handles full episode scripts effortlessly" },
-      { tool: "ElevenLabs", role: "Voice Engine", action: "Generate intro, outro, and supplementary voice segments", why: "Natural voice synthesis with multi-speaker support" },
-      { tool: "ChatGPT", role: "Content Packager", action: "Create show notes, social clips, and email newsletters", why: "Excels at reformatting content across multiple formats" },
-      { tool: "Zapier", role: "Distribution Automator", action: "Auto-publish to Spotify, Apple, YouTube, and social media", why: "Single trigger publishes across all platforms simultaneously" },
-    ],
-    pro_tip: "Use Claude to generate a content calendar for 12 episodes at once, then batch-produce them.",
-    moat: "Produces a weekly podcast that sounds professional without requiring a studio, editor, or production team.",
-  },
-  coding: {
-    title: "AI-Augmented Development Stack",
-    summary: "Ship production code at 10x speed with AI-powered research, architecture design, pair programming, code review, and documentation.",
-    difficulty: "Advanced",
-    time: "1-2 hours setup",
-    cost: "$45/mo",
-    wsr: 97,
-    steps: [
-      { tool: "Perplexity", role: "Technical Researcher", action: "Research libraries, APIs, and architecture patterns", why: "Real-time search for latest docs and solutions" },
-      { tool: "Claude", role: "System Architect", action: "Design data models, API schemas, and system architecture", why: "Excels at complex technical reasoning with large context" },
-      { tool: "Cursor", role: "AI Pair Programmer", action: "Write, refactor, and debug code with codebase-aware AI", why: "Understands your entire codebase for contextual suggestions" },
-      { tool: "ChatGPT", role: "Code Reviewer", action: "Review PRs for bugs, security issues, and best practices", why: "Catches subtle bugs and suggests improvements quickly" },
-      { tool: "Notion AI", role: "Doc Writer", action: "Generate API docs, READMEs, and architecture decision records", why: "Integrated documentation stays synced with your workspace" },
-      { tool: "Zapier", role: "DevOps Connector", action: "Automate CI/CD notifications, issue tracking, and monitoring", why: "Connects GitHub, Slack, Linear, and monitoring tools" },
-    ],
-    pro_tip: "Use Claude for architecture decisions and Cursor for implementation. Let ChatGPT review the final PR before merging.",
-    moat: "A solo developer with this stack ships faster than a 3-person team using traditional workflows.",
-  },
-};
-
-function matchResult(goal: string): GeneratedStack {
-  const g = goal.toLowerCase();
-  if (g.includes("youtube") || g.includes("video")) return MOCK_RESULTS.youtube;
-  if (g.includes("saas") || g.includes("landing")) return MOCK_RESULTS.saas;
-  if (g.includes("podcast") || g.includes("audio")) return MOCK_RESULTS.podcast;
-  if (g.includes("coding") || g.includes("code") || g.includes("develop")) return MOCK_RESULTS.coding;
-  return MOCK_RESULTS.default;
+  goal: string
+  tools: Tool[]
+  reasoning: string
 }
 
 export default function GeneratePage() {
-  const [goal, setGoal] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<GeneratedStack | null>(null);
+  const [goal, setGoal] = useState('')
+  const [customGoal, setCustomGoal] = useState('')
+  const [budget, setBudget] = useState(BUDGETS[3])
+  const [experience, setExperience] = useState<typeof EXPERIENCE_LEVELS[number]>('intermediate')
+  const [loading, setLoading] = useState(false)
+  const [generatedStack, setGeneratedStack] = useState<GeneratedStack | null>(null)
+  const [allTools, setAllTools] = useState<Tool[]>([])
 
-  const handleGenerate = () => {
-    if (!goal.trim()) return;
-    setLoading(true);
-    setResult(null);
-    setTimeout(() => {
-      setResult(matchResult(goal));
-      setLoading(false);
-    }, 2000);
-  };
+  // Pre-fetch tools for stack generation
+  useEffect(() => {
+    supabase
+      .from('tools')
+      .select('*')
+      .eq('status', 'active')
+      .order('atlas_score', { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        if (data) setAllTools(data as Tool[])
+      })
+  }, [])
 
-  const handleReset = () => {
-    setResult(null);
-    setGoal("");
-  };
+  const effectiveGoal = goal === 'custom' ? customGoal : goal
+
+  const generateStack = async () => {
+    if (!effectiveGoal.trim()) return
+
+    setLoading(true)
+    setGeneratedStack(null)
+
+    // Simulate AI generation with smart tool selection
+    await new Promise((r) => setTimeout(r, 1800))
+
+    // Smart filtering: pick diverse tools by category
+    let tools = allTools
+    if (budget.max !== Infinity) {
+      tools = tools.filter(
+        (t) => t.pricing === 'free' || t.pricing === 'freemium' || (t.pricing_num ?? 0) <= budget.max
+      )
+    }
+
+    // Pick top tools across different categories
+    const seen = new Set<string>()
+    const selected: Tool[] = []
+    for (const tool of tools) {
+      if (!seen.has(tool.category) && selected.length < 5) {
+        seen.add(tool.category)
+        selected.push(tool)
+      }
+    }
+
+    // Fallback if not enough tools
+    if (selected.length < 3) {
+      selected.push(...tools.slice(0, Math.max(0, 4 - selected.length)))
+    }
+
+    setGeneratedStack({
+      goal: effectiveGoal,
+      tools: selected.slice(0, 5),
+      reasoning: `Based on your goal to "${effectiveGoal}" with a ${experience} experience level, we've selected a balanced stack of tools that covers research, creation, and deployment phases. Each tool integrates well with the others.`,
+    })
+    setLoading(false)
+  }
 
   return (
-    <div className="min-h-screen px-4 py-16 max-w-3xl mx-auto">
-      <div className="text-center mb-8">
-        <span className="text-[10px] font-mono tracking-widest text-slate-600 border border-[#1e293b] px-3 py-1 rounded-full">
-          AI Stack Generator · Model Router
-        </span>
+    <div className="min-h-screen pt-24 pb-20 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="text-center mb-12">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-400/10 border border-cyan-400/20 text-cyan-400 text-xs font-medium mb-5">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+          AI Stack Generator
+        </div>
+        <h1 className="text-4xl sm:text-5xl font-black text-white mb-4">
+          Build your perfect{' '}
+          <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+            AI stack
+          </span>
+        </h1>
+        <p className="text-white/50 max-w-xl mx-auto">
+          Tell us your goal and we&apos;ll recommend the best combination of AI tools.
+        </p>
       </div>
 
-      <h1 className="text-3xl md:text-4xl font-bold text-center mb-8 gradient-text">
-        Generate Your AI Stack
-      </h1>
-
-      {!result && (
-        <>
-          <div className="card-surface rounded-xl p-6 mb-6">
-            <label className="text-xs text-slate-500 font-mono mb-2 block">DESCRIBE YOUR GOAL</label>
-            <textarea
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              placeholder="e.g. I want to automate a YouTube channel from research to publishing..."
-              className="w-full h-28 bg-transparent text-sm text-slate-200 placeholder-slate-600 resize-none focus:outline-none"
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-6 justify-center">
-            {EXAMPLES.map((ex) => (
+      {/* Config panel */}
+      <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 mb-8">
+        {/* Goal selection */}
+        <div className="mb-6">
+          <label className="text-sm font-medium text-white/70 mb-3 block">
+            What&apos;s your goal?
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+            {GOALS.map((g) => (
               <button
-                key={ex}
-                onClick={() => setGoal(ex)}
-                className="text-[11px] px-3 py-1.5 rounded-full border border-[#1e293b] text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-colors"
+                key={g}
+                onClick={() => setGoal(g)}
+                className={`text-xs px-3 py-2 rounded-xl border transition-all text-left ${
+                  goal === g
+                    ? 'bg-cyan-400/10 border-cyan-400/30 text-cyan-400'
+                    : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/20'
+                }`}
               >
-                {ex}
+                {g}
               </button>
             ))}
-          </div>
-
-          <div className="text-center">
             <button
-              onClick={handleGenerate}
-              disabled={!goal.trim() || loading}
-              className="px-8 py-3 rounded-lg text-sm font-medium text-white disabled:opacity-50 transition-opacity"
-              style={{ background: "linear-gradient(135deg, #06b6d4, #3b82f6)", boxShadow: "0 0 30px rgba(6,182,212,0.15)" }}
+              onClick={() => setGoal('custom')}
+              className={`text-xs px-3 py-2 rounded-xl border transition-all ${
+                goal === 'custom'
+                  ? 'bg-cyan-400/10 border-cyan-400/30 text-cyan-400'
+                  : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/20'
+              }`}
             >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Generating Stack...
-                </span>
-              ) : "Generate Stack →"}
+              ✏️ Custom
             </button>
           </div>
-        </>
-      )}
-
-      {loading && (
-        <div className="text-center py-20">
-          <div className="w-12 h-12 mx-auto border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin mb-4" />
-          <p className="text-sm text-slate-400">Analyzing goal and selecting optimal tools...</p>
-          <p className="text-[10px] text-slate-600 mt-1 font-mono">Model Router → Claude Opus → Stack Assembly</p>
+          {goal === 'custom' && (
+            <input
+              type="text"
+              placeholder="Describe your goal..."
+              value={customGoal}
+              onChange={(e) => setCustomGoal(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-cyan-400/40 transition-colors"
+            />
+          )}
         </div>
-      )}
 
-      {result && !loading && (
-        <div className="animate-fadeUp">
-          <div className="card-surface rounded-xl p-6 mb-4">
-            <h2 className="text-xl font-bold text-white mb-2">{result.title}</h2>
-            <p className="text-sm text-slate-400 mb-4">{result.summary}</p>
-            <div className="flex flex-wrap gap-2">
-              <span className="text-[10px] px-2 py-1 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">{result.difficulty}</span>
-              <span className="text-[10px] px-2 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">{result.time}</span>
-              <span className="text-[10px] px-2 py-1 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">{result.cost}</span>
-              <span className="text-[10px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">WSR: {result.wsr}%</span>
-            </div>
-          </div>
-
-          <div className="card-surface rounded-xl p-6 mb-4">
-            <h3 className="text-xs font-mono text-slate-500 tracking-wider mb-4">WORKFLOW STEPS</h3>
-            <div className="space-y-4">
-              {result.steps.map((step, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ background: "linear-gradient(135deg, #06b6d4, #3b82f6)", color: "#fff" }}>
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-sm font-semibold text-white">{step.tool}</span>
-                      <span className="text-[10px] text-cyan-400 font-mono">{step.role}</span>
-                    </div>
-                    <p className="text-xs text-slate-400">{step.action}</p>
-                    <p className="text-[10px] text-slate-600 mt-1">↳ {step.why}</p>
-                  </div>
-                </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+          {/* Budget */}
+          <div>
+            <label className="text-sm font-medium text-white/70 mb-3 block">Monthly Budget</label>
+            <div className="grid grid-cols-2 gap-2">
+              {BUDGETS.map((b) => (
+                <button
+                  key={b.label}
+                  onClick={() => setBudget(b)}
+                  className={`text-xs px-3 py-2 rounded-xl border transition-all ${
+                    budget.label === b.label
+                      ? 'bg-cyan-400/10 border-cyan-400/30 text-cyan-400'
+                      : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/20'
+                  }`}
+                >
+                  {b.label}
+                </button>
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="card-surface rounded-xl p-5">
-              <h3 className="text-[10px] font-mono text-emerald-400 tracking-wider mb-2">💡 PRO TIP</h3>
-              <p className="text-xs text-slate-400">{result.pro_tip}</p>
+          {/* Experience */}
+          <div>
+            <label className="text-sm font-medium text-white/70 mb-3 block">Experience Level</label>
+            <div className="grid grid-cols-3 gap-2">
+              {EXPERIENCE_LEVELS.map((lvl) => (
+                <button
+                  key={lvl}
+                  onClick={() => setExperience(lvl)}
+                  className={`text-xs px-3 py-2 rounded-xl border capitalize transition-all ${
+                    experience === lvl
+                      ? 'bg-cyan-400/10 border-cyan-400/30 text-cyan-400'
+                      : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/20'
+                  }`}
+                >
+                  {lvl}
+                </button>
+              ))}
             </div>
-            <div className="card-surface rounded-xl p-5">
-              <h3 className="text-[10px] font-mono text-violet-400 tracking-wider mb-2">🏰 MOAT</h3>
-              <p className="text-xs text-slate-400">{result.moat}</p>
+          </div>
+        </div>
+
+        {/* Generate button */}
+        <button
+          onClick={generateStack}
+          disabled={loading || !effectiveGoal.trim()}
+          className="w-full py-4 bg-cyan-400 text-black font-bold rounded-xl hover:bg-cyan-300 transition-all hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-[0_0_20px_rgba(34,211,238,0.2)]"
+        >
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+              Generating your stack...
+            </span>
+          ) : (
+            '✦ Generate My Stack →'
+          )}
+        </button>
+      </div>
+
+      {/* Generated Result */}
+      {generatedStack && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-gradient-to-br from-cyan-500/10 to-blue-600/10 border border-cyan-400/20 rounded-2xl p-6 mb-6">
+            <div className="flex items-start gap-3 mb-2">
+              <span className="text-2xl">✦</span>
+              <div>
+                <h2 className="text-lg font-bold text-white">Your AI Stack for: {generatedStack.goal}</h2>
+                <p className="text-sm text-white/50 mt-1">{generatedStack.reasoning}</p>
+              </div>
             </div>
           </div>
 
-          <div className="flex gap-3 justify-center">
-            <button onClick={handleReset} className="px-6 py-2.5 rounded-lg text-sm font-medium text-slate-300 border border-[#1e293b] hover:border-slate-600 transition-colors">
-              New Stack
-            </button>
-            <button className="px-6 py-2.5 rounded-lg text-sm font-medium text-white" style={{ background: "linear-gradient(135deg, #06b6d4, #3b82f6)" }}>
-              Save &amp; Share
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {generatedStack.tools.map((tool, idx) => (
+              <div key={tool.id} className="relative">
+                <div className="absolute -top-2 -left-2 z-10 w-6 h-6 rounded-full bg-cyan-400 text-black text-xs font-bold flex items-center justify-center">
+                  {idx + 1}
+                </div>
+                <ToolCard tool={tool} />
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={generateStack}
+              className="text-sm text-white/40 hover:text-white/70 transition-colors"
+            >
+              ↺ Regenerate
             </button>
           </div>
         </div>
       )}
     </div>
-  );
+  )
 }
