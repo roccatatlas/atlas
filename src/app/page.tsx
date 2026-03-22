@@ -1,68 +1,76 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
-import Navbar from '@/components/Navbar'
 
-// Star component
-function Star({ x, y, size, opacity, duration }: { x: number, y: number, size: number, opacity: number, duration: string }) {
-  return (
-    <div style={{
-      position: 'absolute',
-      left: `${x}%`, top: `${y}%`,
-      width: size, height: size,
-      borderRadius: '50%',
-      background: '#fff',
-      opacity,
-      animation: `twinkle ${duration} infinite ease-in-out`,
-      pointerEvents: 'none',
-    }} />
-  )
-}
+// ─── DATA ───
+const MARQUEE_TOOLS = [
+  { name: 'ChatGPT', c: '#10B981' }, { name: 'Claude', c: '#7C3AED' },
+  { name: 'Midjourney', c: '#3B82F6' }, { name: 'Runway', c: '#EC4899' },
+  { name: 'Cursor', c: '#F59E0B' }, { name: 'ElevenLabs', c: '#06B6D4' },
+  { name: 'Perplexity', c: '#6366F1' }, { name: 'Zapier', c: '#14B8A6' },
+  { name: 'Figma AI', c: '#EC4899' }, { name: 'Copilot', c: '#10B981' },
+  { name: 'Suno', c: '#F59E0B' }, { name: 'Replicate', c: '#3B82F6' },
+  { name: 'Hugging Face', c: '#7C3AED' }, { name: 'Stability AI', c: '#06B6D4' },
+  { name: 'Jasper', c: '#EC4899' }, { name: 'Descript', c: '#F59E0B' },
+  { name: 'v0', c: '#10B981' }, { name: 'Bolt', c: '#6366F1' },
+  { name: 'Lovable', c: '#EC4899' }, { name: 'Kling', c: '#14B8A6' },
+]
 
-// Nebula glow
-function Nebula({ x, y, color, size = 600, opacity = 0.1 }: { x: number, y: number, color: string, size?: number, opacity?: number }) {
-  const hex = Math.round(opacity * 255).toString(16).padStart(2, '0')
-  return (
-    <div style={{
-      position: 'absolute',
-      left: `${x}%`, top: `${y}%`,
-      width: size, height: size,
-      transform: 'translate(-50%, -50%)',
-      background: `radial-gradient(circle, ${color}${hex} 0%, transparent 70%)`,
-      pointerEvents: 'none',
-      animation: 'nebulaPulse 8s infinite ease-in-out',
-    }} />
-  )
-}
+const WORKFLOW = [
+  { tool: 'Perplexity', role: 'Deep Research', color: 'var(--accent-cyan)', bg: 'rgba(6,182,212,0.08)', border: 'rgba(6,182,212,0.15)' },
+  { tool: 'Claude', role: 'Script Writing', color: 'var(--accent-purple)', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.15)' },
+  { tool: 'ElevenLabs', role: 'Voice Synthesis', color: 'var(--accent-green)', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.15)' },
+  { tool: 'Runway', role: 'Visual Generation', color: 'var(--accent-pink)', bg: 'rgba(236,72,153,0.08)', border: 'rgba(236,72,153,0.15)' },
+  { tool: 'Descript', role: 'Edit & Publish', color: 'var(--accent-amber)', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.15)' },
+]
 
-// Floating tool node
-function ToolNode({ x, y, color, label, size = 10, delay = '0s' }: { x: number, y: number, color: string, label: string, size?: number, delay?: string }) {
-  return (
-    <div style={{
-      position: 'absolute', left: `${x}%`, top: `${y}%`,
-      transform: 'translate(-50%, -50%)',
-      animation: `float 6s ${delay} infinite ease-in-out`,
-      pointerEvents: 'none',
-      zIndex: 1,
-    }}>
-      <div style={{
-        width: size, height: size, borderRadius: '50%',
-        background: color,
-        boxShadow: `0 0 ${size * 2}px ${color}88`,
-        margin: 'auto',
-      }} />
-      <div style={{
-        marginTop: 6, fontSize: 9, color: '#334155',
-        textAlign: 'center', whiteSpace: 'nowrap', fontWeight: 600,
-      }}>{label}</div>
-    </div>
-  )
-}
+const CONSTELLATIONS = [
+  { name: 'Language Models', count: '2,400+', c: 'var(--accent-purple)' },
+  { name: 'Image Generation', count: '1,800+', c: 'var(--accent-blue)' },
+  { name: 'Automation', count: '1,200+', c: 'var(--accent-green)' },
+  { name: 'Code Assistants', count: '980+', c: 'var(--accent-teal)' },
+  { name: 'Video & Motion', count: '640+', c: 'var(--accent-amber)' },
+  { name: 'Audio & Voice', count: '520+', c: 'var(--accent-pink)' },
+  { name: 'AI Agents', count: '890+', c: 'var(--accent-indigo)' },
+  { name: 'Data & Analytics', count: '1,100+', c: 'var(--accent-cyan)' },
+]
 
-// Typewriter hook
-function useTypewriter(words: string[], typingSpeed = 55, deletingSpeed = 25, pauseMs = 1800) {
+const FEATURED_TOOLS = [
+  { name: 'ChatGPT', cat: 'Language Model', desc: 'The most versatile conversational AI for reasoning, code, and creative tasks.', c: '#10B981', icon: 'G' },
+  { name: 'Claude', cat: 'Language Model', desc: 'Advanced reasoning with long context windows and careful, nuanced analysis.', c: '#7C3AED', icon: 'C' },
+  { name: 'Midjourney', cat: 'Image Generation', desc: 'Create stunning art and visuals from text prompts with unmatched aesthetics.', c: '#3B82F6', icon: 'M' },
+  { name: 'Cursor', cat: 'Code Assistant', desc: 'AI-native code editor that writes, refactors, and debugs alongside you.', c: '#F59E0B', icon: 'Cu' },
+  { name: 'Runway', cat: 'Video Generation', desc: 'Generate cinematic video content using AI — from text to motion picture.', c: '#EC4899', icon: 'R' },
+  { name: 'ElevenLabs', cat: 'Audio & Voice', desc: 'Ultra-realistic AI voice generation and multi-language text-to-speech.', c: '#06B6D4', icon: 'E' },
+  { name: 'Perplexity', cat: 'Research', desc: 'AI search engine delivering sourced, real-time answers with citations.', c: '#6366F1', icon: 'P' },
+  { name: 'v0', cat: 'Code Assistant', desc: 'Generate production-ready UI components from natural language prompts.', c: '#14B8A6', icon: 'v0' },
+]
+
+const SYSTEM_LAYERS = [
+  { icon: '◈', name: 'Interface', desc: 'Web · Dashboard · API', c: 'var(--accent-cyan)' },
+  { icon: '⬡', name: 'Intelligence', desc: 'Stack Generator · Recs', c: 'var(--accent-purple)' },
+  { icon: '◎', name: 'Agents', desc: 'Architect · Research · Build', c: 'var(--accent-blue)' },
+  { icon: '⊕', name: 'Discovery', desc: 'GitHub · PH · HuggingFace', c: 'var(--accent-green)' },
+  { icon: '◉', name: 'Data Core', desc: 'Knowledge Graph · SQL', c: 'var(--accent-amber)' },
+  { icon: '△', name: 'Distribution', desc: 'Social · Newsletter · SDK', c: 'var(--accent-pink)' },
+]
+
+const HERO_NODES = [
+  { x: 10, y: 20, s: 5, c: 'var(--accent-blue)', d: 6, delay: 0 },
+  { x: 88, y: 25, s: 4, c: 'var(--accent-purple)', d: 7, delay: 1 },
+  { x: 6, y: 65, s: 6, c: 'var(--accent-green)', d: 8, delay: 0.5 },
+  { x: 92, y: 60, s: 3, c: 'var(--accent-amber)', d: 5.5, delay: 1.5 },
+  { x: 20, y: 85, s: 4, c: 'var(--accent-pink)', d: 7.5, delay: 2 },
+  { x: 80, y: 80, s: 5, c: 'var(--accent-cyan)', d: 6, delay: 0.8 },
+  { x: 50, y: 12, s: 3, c: 'var(--accent-indigo)', d: 9, delay: 1.2 },
+  { x: 35, y: 75, s: 4, c: 'var(--accent-teal)', d: 6.5, delay: 0.3 },
+  { x: 65, y: 88, s: 3, c: 'var(--accent-blue)', d: 8, delay: 2.5 },
+]
+
+// ─── TYPEWRITER HOOK ───
+function useTypewriter(words: string[], speed = 40) {
   const [text, setText] = useState('')
-  const [phase, setPhase] = useState<'typing' | 'pausing' | 'deleting'>('typing')
+  const [phase, setPhase] = useState<'typing' | 'pause' | 'deleting'>('typing')
   const idx = useRef(0)
 
   useEffect(() => {
@@ -71,504 +79,634 @@ function useTypewriter(words: string[], typingSpeed = 55, deletingSpeed = 25, pa
 
     if (phase === 'typing') {
       if (text.length < target.length) {
-        timer = setTimeout(() => setText(target.slice(0, text.length + 1)), typingSpeed)
+        timer = setTimeout(() => setText(target.slice(0, text.length + 1)), speed + Math.random() * 30)
       } else {
-        timer = setTimeout(() => setPhase('pausing'), pauseMs)
+        timer = setTimeout(() => setPhase('pause'), 3000)
       }
-    } else if (phase === 'pausing') {
+    } else if (phase === 'pause') {
       timer = setTimeout(() => setPhase('deleting'), 400)
     } else {
       if (text.length > 0) {
-        timer = setTimeout(() => setText(text.slice(0, -1)), deletingSpeed)
+        timer = setTimeout(() => setText(text.slice(0, -1)), 20)
       } else {
         idx.current = (idx.current + 1) % words.length
         setPhase('typing')
       }
     }
     return () => clearTimeout(timer)
-  }, [text, phase, words, typingSpeed, deletingSpeed, pauseMs])
+  }, [text, phase, words, speed])
 
   return text
 }
 
-// Generate stars once
-const STARS = Array.from({ length: 220 }, (_, i) => ({
-  id: i,
-  x: (i * 37.3) % 100,
-  y: (i * 61.7) % 100,
-  size: (i % 18) * 0.1 + 0.3,
-  opacity: (i % 7) * 0.1 + 0.2,
-  duration: `${(i % 8) + 4}s`,
-}))
-
-const TOOL_NODES = [
-  { x: 12, y: 22, c: '#06b6d4', l: 'ChatGPT', s: 9, d: '0s' },
-  { x: 87, y: 28, c: '#8b5cf6', l: 'Midjourney', s: 8, d: '1s' },
-  { x: 8,  y: 68, c: '#22c55e', l: 'ElevenLabs', s: 10, d: '2s' },
-  { x: 90, y: 62, c: '#f59e0b', l: 'Cursor', s: 7, d: '0.5s' },
-  { x: 22, y: 88, c: '#ec4899', l: 'Runway', s: 8, d: '1.5s' },
-  { x: 78, y: 82, c: '#3b82f6', l: 'Zapier', s: 9, d: '2.5s' },
-  { x: 48, y: 90, c: '#06b6d4', l: 'Perplexity', s: 6, d: '0.8s' },
-  { x: 5,  y: 40, c: '#7c3aed', l: 'Claude', s: 7, d: '1.2s' },
-  { x: 95, y: 45, c: '#10b981', l: 'Make', s: 6, d: '0.3s' },
-]
-
-const WORKFLOW = [
-  { tool: 'Perplexity', role: 'Research', color: '#06b6d4' },
-  { tool: 'Claude', role: 'Script', color: '#8b5cf6' },
-  { tool: 'ElevenLabs', role: 'Voice', color: '#22c55e' },
-  { tool: 'Runway', role: 'Video', color: '#ec4899' },
-  { tool: 'Descript', role: 'Edit', color: '#f59e0b' },
-]
-
-const METRICS = [
-  { n: '10,000+', l: 'AI Tools' },
-  { n: '300+', l: 'Categories' },
-  { n: '1M+', l: 'SEO Pages' },
-  { n: 'Daily', l: 'Discovery Engine' },
-]
-
-const STACK_LAYERS = [
-  { layer: 'Interface', desc: 'Web App · Dashboard · API', color: '#06b6d4' },
-  { layer: 'Intelligence', desc: 'Stack Generator · Recommendations', color: '#8b5cf6' },
-  { layer: 'Agents', desc: 'Architect · Research · Builder', color: '#3b82f6' },
-  { layer: 'Discovery', desc: 'GitHub · ProductHunt · HuggingFace', color: '#22c55e' },
-  { layer: 'Data Core', desc: 'Knowledge Graph · PostgreSQL', color: '#f59e0b' },
-  { layer: 'Distribution', desc: 'Social · Newsletter · API', color: '#ec4899' },
-]
-
-export default function HomePage() {
-  const [mouseX, setMouseX] = useState(0.5)
-  const [mouseY, setMouseY] = useState(0.5)
-  const [scrollY, setScrollY] = useState(0)
-  const typed = useTypewriter([
-    'Build a YouTube Channel',
-    'Launch an AI SaaS',
-    'Automate your Marketing',
-    'Create a Podcast',
-    'Scale your Startup',
-  ])
+// ─── ANIMATED COUNTER HOOK ───
+function useCounter(target: number, suffix: string, duration = 2000) {
+  const [value, setValue] = useState('0' + suffix)
+  const ref = useRef<HTMLDivElement>(null)
+  const triggered = useRef(false)
 
   useEffect(() => {
-    const onMouse = (e: MouseEvent) => {
-      setMouseX(e.clientX / window.innerWidth)
-      setMouseY(e.clientY / window.innerHeight)
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !triggered.current) {
+        triggered.current = true
+        const start = performance.now()
+        function update(now: number) {
+          const p = Math.min((now - start) / duration, 1)
+          const eased = 1 - Math.pow(1 - p, 3)
+          setValue(Math.round(target * eased).toLocaleString() + suffix)
+          if (p < 1) requestAnimationFrame(update)
+        }
+        requestAnimationFrame(update)
+      }
+    }, { threshold: 0.3 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [target, suffix, duration])
+
+  return { value, ref }
+}
+
+// ─── TOPOGRAPHIC CANVAS ───
+function TopoCanvas() {
+  const ref = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    let animId: number
+    let time = 0
+
+    function resize() {
+      canvas!.width = window.innerWidth
+      canvas!.height = window.innerHeight
     }
-    const onScroll = () => setScrollY(window.scrollY)
-    window.addEventListener('mousemove', onMouse)
-    window.addEventListener('scroll', onScroll, { passive: true })
+    resize()
+    window.addEventListener('resize', resize)
+
+    function noise(x: number, y: number, t: number) {
+      return Math.sin(x * 0.006 + t * 0.2) * Math.cos(y * 0.005 + t * 0.15) +
+             Math.sin(x * 0.01 - y * 0.008 + t * 0.1) * 0.6 +
+             Math.cos(x * 0.004 + y * 0.006 + t * 0.18) * 0.4
+    }
+
+    function draw() {
+      const w = canvas!.width, h = canvas!.height
+      ctx!.clearRect(0, 0, w, h)
+      const levels = 20, step = 10
+
+      for (let level = 0; level < levels; level++) {
+        const threshold = (level / levels) * 2.8 - 1.4
+        const alpha = 0.04 + (level % 4 === 0 ? 0.06 : 0)
+        ctx!.strokeStyle = `rgba(59, 130, 246, ${alpha})`
+        ctx!.lineWidth = level % 4 === 0 ? 0.8 : 0.4
+        ctx!.beginPath()
+
+        for (let x = 0; x < w; x += step) {
+          let prevPy: number | null = null
+          for (let y = 0; y < h; y += step) {
+            const v = noise(x, y, time)
+            const right = x + step < w ? noise(x + step, y, time) : v
+            const bottom = y + step < h ? noise(x, y + step, time) : v
+
+            if ((v >= threshold) !== (right >= threshold)) {
+              const t_val = Math.abs(threshold - v) / (Math.abs(right - v) + 0.001)
+              const px = x + t_val * step
+              ctx!.moveTo(px, y); ctx!.lineTo(px, y + step * 0.6)
+            }
+            if ((v >= threshold) !== (bottom >= threshold)) {
+              const t_val = Math.abs(threshold - v) / (Math.abs(bottom - v) + 0.001)
+              const py = y + t_val * step
+              if (prevPy !== null && Math.abs(py - prevPy) < step * 2) {
+                ctx!.lineTo(x, py)
+              } else {
+                ctx!.moveTo(x, py)
+              }
+              prevPy = py
+            }
+          }
+        }
+        ctx!.stroke()
+      }
+
+      time += 0.002
+      animId = requestAnimationFrame(draw)
+    }
+    draw()
+
     return () => {
-      window.removeEventListener('mousemove', onMouse)
-      window.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(animId)
+      window.removeEventListener('resize', resize)
     }
   }, [])
 
-  const parallaxX = (mouseX - 0.5) * 30
-  const parallaxY = (mouseY - 0.5) * 20
+  return <canvas ref={ref} style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }} />
+}
+
+// ─── PARTICLE CANVAS ───
+function ParticleCanvas() {
+  const ref = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    let animId: number
+
+    function resize() {
+      canvas!.width = window.innerWidth
+      canvas!.height = window.innerHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    const colors = ['59,130,246', '124,58,237', '6,182,212', '16,185,129', '99,102,241']
+    const particles = Array.from({ length: 60 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 1.5 + 0.5,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      alpha: Math.random() * 0.4 + 0.1,
+    }))
+
+    function draw() {
+      const w = canvas!.width, h = canvas!.height
+      ctx!.clearRect(0, 0, w, h)
+
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x
+          const dy = particles[i].y - particles[j].y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < 150) {
+            ctx!.beginPath()
+            ctx!.strokeStyle = `rgba(59,130,246,${0.03 * (1 - dist / 150)})`
+            ctx!.lineWidth = 0.5
+            ctx!.moveTo(particles[i].x, particles[i].y)
+            ctx!.lineTo(particles[j].x, particles[j].y)
+            ctx!.stroke()
+          }
+        }
+      }
+
+      for (const p of particles) {
+        p.x += p.vx; p.y += p.vy
+        if (p.x < 0) p.x = w
+        if (p.x > w) p.x = 0
+        if (p.y < 0) p.y = h
+        if (p.y > h) p.y = 0
+
+        ctx!.beginPath()
+        ctx!.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx!.fillStyle = `rgba(${p.color},${p.alpha})`
+        ctx!.fill()
+
+        ctx!.beginPath()
+        ctx!.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2)
+        ctx!.fillStyle = `rgba(${p.color},${p.alpha * 0.15})`
+        ctx!.fill()
+      }
+
+      animId = requestAnimationFrame(draw)
+    }
+    draw()
+
+    return () => {
+      cancelAnimationFrame(animId)
+      window.removeEventListener('resize', resize)
+    }
+  }, [])
+
+  return <canvas ref={ref} style={{ position: 'fixed', inset: 0, zIndex: 1, pointerEvents: 'none' }} />
+}
+
+// ─── SCROLL REVEAL ───
+function Reveal({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) setVisible(true)
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
 
   return (
-    <div style={{ background: '#0B0B0C', minHeight: '100vh', color: '#fff', overflowX: 'hidden' }}>
-      <Navbar />
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(60px)',
+        transition: `opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s, transform 1.2s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
 
-      {/* Starfield — fixed background */}
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-        {STARS.map(s => (
-          <Star key={s.id} x={s.x} y={s.y} size={s.size} opacity={s.opacity} duration={s.duration} />
-        ))}
+// ─── CUSTOM CURSOR ───
+function CustomCursor() {
+  const dotRef = useRef<HTMLDivElement>(null)
+  const ringRef = useRef<HTMLDivElement>(null)
+  const [hovering, setHovering] = useState(false)
+
+  useEffect(() => {
+    let mx = 0, my = 0, rx = 0, ry = 0
+    const dot = dotRef.current, ring = ringRef.current
+    if (!dot || !ring) return
+
+    const onMove = (e: MouseEvent) => {
+      mx = e.clientX; my = e.clientY
+      dot.style.left = mx + 'px'
+      dot.style.top = my + 'px'
+    }
+    document.addEventListener('mousemove', onMove)
+
+    let animId: number
+    function lerp(a: number, b: number, t: number) { return a + (b - a) * t }
+    function animate() {
+      rx = lerp(rx, mx, 0.12)
+      ry = lerp(ry, my, 0.12)
+      ring!.style.left = rx + 'px'
+      ring!.style.top = ry + 'px'
+      animId = requestAnimationFrame(animate)
+    }
+    animate()
+
+    const onEnter = () => setHovering(true)
+    const onLeave = () => setHovering(false)
+    const targets = document.querySelectorAll('button, a, .tool-card, .constellation-card, .system-cell, .chaos-tag')
+    targets.forEach(el => {
+      el.addEventListener('mouseenter', onEnter)
+      el.addEventListener('mouseleave', onLeave)
+    })
+
+    return () => {
+      document.removeEventListener('mousemove', onMove)
+      cancelAnimationFrame(animId)
+      targets.forEach(el => {
+        el.removeEventListener('mouseenter', onEnter)
+        el.removeEventListener('mouseleave', onLeave)
+      })
+    }
+  }, [])
+
+  return (
+    <>
+      <div ref={dotRef} className={`cursor-dot ${hovering ? 'hovering' : ''}`} />
+      <div ref={ringRef} className={`cursor-ring ${hovering ? 'hovering' : ''}`} />
+    </>
+  )
+}
+
+// ─── MAIN PAGE ───
+export default function HomePage() {
+  const [navScrolled, setNavScrolled] = useState(false)
+  const typed = useTypewriter([
+    '"Automate my YouTube pipeline"',
+    '"Build an AI customer support agent"',
+    '"Generate marketing visuals at scale"',
+    '"Create a podcast from blog posts"',
+  ])
+
+  const statTools = useCounter(10000, '+')
+  const statCats = useCounter(300, '+')
+
+  useEffect(() => {
+    const onScroll = () => setNavScrolled(window.scrollY > 80)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Parallax glow orbs
+  useEffect(() => {
+    const onScroll = () => {
+      const sy = window.scrollY
+      document.querySelectorAll('.glow-orb').forEach((orb, i) => {
+        const speed = 0.02 + (i % 3) * 0.01
+        ;(orb as HTMLElement).style.transform = `translate(-50%, calc(-50% + ${sy * speed}px))`
+      })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  return (
+    <div style={{ background: 'var(--bg)', minHeight: '100vh', color: 'var(--text-primary)', overflowX: 'hidden' }}>
+      {/* OVERLAY LAYERS */}
+      <div className="grain" />
+      <div className="scanline" />
+      <div className="vignette" />
+      <TopoCanvas />
+      <ParticleCanvas />
+      <CustomCursor />
+
+      {/* ── NAVBAR ── */}
+      <nav className={`navbar ${navScrolled ? 'scrolled' : ''}`}>
+        <Link href="/" className="nav-logo" style={{ textDecoration: 'none' }}>
+          RUN<span>ATLAS</span>
+        </Link>
+        <div className="nav-links">
+          <Link href="/tools">Tools</Link>
+          <Link href="/stacks">Stacks</Link>
+          <Link href="/categories">Galaxy</Link>
+          <Link href="/search">Search</Link>
+        </div>
+        <Link href="/tools" className="nav-cta" style={{ textDecoration: 'none' }}>
+          Enter Atlas
+        </Link>
+      </nav>
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* SCENE 1: HERO */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      <section className="scene hero">
+        <div className="glow-orb" style={{ width: 700, height: 700, background: 'rgba(59,130,246,0.05)', left: '50%', top: '45%', transform: 'translate(-50%,-50%)' }} />
+        <div className="glow-orb" style={{ width: 500, height: 500, background: 'rgba(124,58,237,0.03)', left: '25%', top: '65%', transform: 'translate(-50%,-50%)' }} />
+
+        {/* Floating nodes */}
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 1 }}>
+          {HERO_NODES.map((n, i) => (
+            <div key={i} style={{
+              position: 'absolute', left: `${n.x}%`, top: `${n.y}%`,
+              width: n.s, height: n.s, borderRadius: '50%',
+              background: n.c, boxShadow: `0 0 ${n.s * 2}px ${n.c}`,
+              animation: `nodeFloat ${n.d}s ${n.delay}s infinite ease-in-out`,
+              opacity: 0.5,
+            }} />
+          ))}
+        </div>
+
+        <div className="hero-content">
+          <Reveal>
+            <div className="hero-badge">
+              <div className="pulse" />
+              NAVIGATING THE AI UNIVERSE
+            </div>
+          </Reveal>
+          <Reveal delay={0.15}>
+            <h1 className="hero-title">
+              <span className="line">The Map of</span>
+              <span className="line accent">Artificial</span>
+              <span className="line accent">Intelligence.</span>
+            </h1>
+          </Reveal>
+          <Reveal delay={0.3}>
+            <p className="hero-sub">
+              Every model. Every tool. One atlas.<br />
+              Discover, compare, and build AI workflows — at the speed of thought.
+            </p>
+          </Reveal>
+          <Reveal delay={0.45}>
+            <div className="hero-ctas">
+              <Link href="/tools" className="btn-primary" style={{ textDecoration: 'none' }}>Explore the Atlas →</Link>
+              <Link href="/generate" className="btn-ghost" style={{ textDecoration: 'none' }}>Generate a Stack</Link>
+            </div>
+          </Reveal>
+        </div>
+
+        <div className="scroll-indicator">
+          <span>SCROLL</span>
+          <div className="scroll-line" />
+        </div>
+      </section>
+
+      {/* ── MARQUEE ── */}
+      <div className="marquee-section">
+        <div className="marquee-track">
+          {[...MARQUEE_TOOLS, ...MARQUEE_TOOLS].map((t, i) => (
+            <span key={i} className="marquee-item">
+              <span className="marquee-dot" style={{ background: t.c, boxShadow: `0 0 6px ${t.c}` }} />
+              {t.name}
+            </span>
+          ))}
+        </div>
       </div>
 
-      {/* ── SCENE 1: HERO ──────────────────────────────────────────── */}
-      <section style={{
-        minHeight: '100vh', position: 'relative',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '120px 20px 80px',
-      }}>
-        {/* Nebulae */}
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-          <Nebula x={50} y={42} color="#06b6d4" size={900} opacity={0.10} />
-          <Nebula x={18} y={70} color="#8b5cf6" size={550} opacity={0.07} />
-          <Nebula x={82} y={20} color="#3b82f6" size={450} opacity={0.06} />
-        </div>
-
-        {/* Floating tool nodes */}
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-          {TOOL_NODES.map((n, i) => (
-            <ToolNode key={i} x={n.x} y={n.y} color={n.c} label={n.l} size={n.s} delay={n.d} />
-          ))}
-        </div>
-
-        {/* Core orb with parallax */}
-        <div style={{
-          position: 'absolute', left: '50%', top: '44%',
-          width: 200, height: 200,
-          transform: `translate(calc(-50% + ${parallaxX * 0.3}px), calc(-50% + ${parallaxY * 0.3}px))`,
-          transition: 'transform 0.1s ease',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, #06b6d422 0%, #3b82f610 40%, transparent 70%)',
-          animation: 'corePulse 4s infinite ease-in-out',
-          zIndex: 1,
-        }}>
-          <div style={{
-            position: 'absolute', inset: 0, borderRadius: '50%',
-            border: '1px solid #06b6d422',
-          }} />
-          <div style={{
-            position: 'absolute', inset: 20, borderRadius: '50%',
-            border: '1px solid #3b82f611',
-          }} />
-        </div>
-
-        {/* Hero text */}
-        <div style={{
-          textAlign: 'center', position: 'relative', zIndex: 2,
-          transform: `translateY(${scrollY * -0.12}px)`,
-          maxWidth: 800,
-        }}>
-          {/* Badge */}
-          <div style={{
-            display: 'inline-block',
-            background: '#06b6d410', color: '#06b6d4',
-            border: '1px solid #06b6d422',
-            borderRadius: 20, padding: '4px 16px',
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
-            marginBottom: 32,
-            animation: 'fadeIn 1s ease both',
-          }}>
-            AI WORKFLOW INFRASTRUCTURE · VERSION 20.0
-          </div>
-
-          {/* Main headline */}
-          <div className="hero-headline" style={{ marginBottom: 24, animation: 'fadeUp 0.8s 0.2s ease both' }}>
-            Navigate the<br />AI Universe.
-          </div>
-
-          {/* Typewriter */}
-          <div style={{
-            fontSize: 16, color: '#475569', marginBottom: 8, height: 28,
-            animation: 'fadeUp 0.8s 0.4s ease both',
-          }}>
-            Your goal:{' '}
-            <span style={{ color: '#06b6d4', fontWeight: 700 }}>{typed}</span>
-            <span style={{ color: '#06b6d4', animation: 'twinkle 0.8s infinite' }}>|</span>
-          </div>
-
-          <p style={{
-            fontSize: 15, color: '#334155', maxWidth: 440,
-            margin: '16px auto 48px', lineHeight: 1.8,
-            animation: 'fadeUp 0.8s 0.5s ease both',
-          }}>
-            Google indexed the web.<br />
-            <em style={{ color: '#1e3a5f' }}>Atlas indexes intelligence.</em>
-          </p>
-
-          {/* CTAs */}
-          <div style={{
-            display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap',
-            animation: 'fadeUp 0.8s 0.6s ease both',
-          }}>
-            <Link href="/tools" style={{
-              background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
-              border: 'none', color: '#fff', borderRadius: 10,
-              padding: '14px 32px', fontWeight: 800, fontSize: 14,
-              textDecoration: 'none', boxShadow: '0 0 40px #06b6d430',
-              letterSpacing: 0.3, display: 'inline-block',
-              transition: 'box-shadow 0.3s ease',
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* SCENE 2: THE PROBLEM */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      <section className="scene" style={{ minHeight: '85vh' }}>
+        <div className="glow-orb" style={{ width: 500, height: 500, background: 'rgba(239,68,68,0.03)', right: '10%', top: '30%' }} />
+        <Reveal>
+          <div style={{ textAlign: 'center', position: 'relative', zIndex: 2, maxWidth: 720 }}>
+            <div className="section-label">THE PROBLEM</div>
+            <h2 className="section-title" style={{
+              background: 'linear-gradient(135deg, var(--text-primary) 30%, #ef4444 80%)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
             }}>
-              Explore Atlas →
-            </Link>
-            <Link href="/generate" style={{
-              background: 'transparent',
-              border: '1px solid #1E1F23', color: '#8F8F93',
-              borderRadius: 10, padding: '14px 32px',
-              fontWeight: 700, fontSize: 14, textDecoration: 'none',
-              display: 'inline-block',
-              transition: 'color 0.3s ease, border-color 0.3s ease',
-            }}>
-              Generate Stack
-            </Link>
-          </div>
-
-          {/* Scroll indicator */}
-          <div style={{
-            marginTop: 64, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', gap: 6, opacity: 0.4,
-          }}>
-            <div style={{ fontSize: 10, color: '#334155', letterSpacing: 2 }}>SCROLL</div>
-            <div style={{
-              width: 1, height: 40,
-              background: 'linear-gradient(#06b6d4, transparent)',
-              animation: 'floatY 2s infinite ease-in-out',
-            }} />
-          </div>
-        </div>
-      </section>
-
-      {/* ── SCENE 2: PROBLEM ──────────────────────────────────────── */}
-      <section style={{
-        minHeight: '80vh', position: 'relative',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '120px 20px',
-      }}>
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-          <Nebula x={80} y={50} color="#ef4444" size={500} opacity={0.06} />
-        </div>
-        <div style={{ textAlign: 'center', maxWidth: 700, position: 'relative', zIndex: 2 }}>
-          <div className="label-tag" style={{ marginBottom: 24, color: '#ef444488' }}>THE PROBLEM</div>
-          <div className="section-headline" style={{
-            background: 'linear-gradient(135deg, #f8fafc, #ef4444)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            marginBottom: 24,
-          }}>
-            50,000+ AI tools.<br />Nobody knows<br />which ones work together.
-          </div>
-          <p style={{ fontSize: 15, color: '#334155', lineHeight: 1.8, marginBottom: 40 }}>
-            Developers waste hours choosing between ChatGPT, Claude, Gemini,<br />
-            Midjourney, Runway, ElevenLabs...
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {['ChatGPT?', 'Claude?', 'Gemini?', 'Midjourney?', 'Runway?', '...'].map((t, i) => (
-              <div key={t} style={{
-                background: '#111214', border: '1px solid #1E1F23',
-                borderRadius: 8, padding: '6px 14px',
-                fontSize: 12, color: '#475569',
-                animation: `floatY ${3 + i * 0.4}s ${i * 0.2}s infinite ease-in-out`,
-              }}>{t}</div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── SCENE 3: SOLUTION ─────────────────────────────────────── */}
-      <section style={{
-        minHeight: '90vh', position: 'relative',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '120px 20px',
-      }}>
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-          <Nebula x={50} y={50} color="#06b6d4" size={700} opacity={0.09} />
-        </div>
-        <div style={{ textAlign: 'center', maxWidth: 800, position: 'relative', zIndex: 2 }}>
-          <div className="label-tag" style={{ marginBottom: 24 }}>THE SOLUTION</div>
-          <div className="section-headline" style={{
-            background: 'linear-gradient(135deg, #f8fafc 30%, #06b6d4)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            marginBottom: 48,
-          }}>
-            You describe the goal.<br />ATLAS builds the system.
-          </div>
-
-          {/* Workflow demo card */}
-          <div style={{
-            background: '#0f172a', border: '1px solid #1E1F23',
-            borderRadius: 16, padding: '24px 28px',
-            maxWidth: 520, margin: '0 auto',
-            textAlign: 'left',
-          }}>
-            <div style={{ fontSize: 11, color: '#334155', fontWeight: 700, marginBottom: 10 }}>GOAL</div>
-            <div style={{ fontSize: 16, color: '#f1f5f9', fontWeight: 700, marginBottom: 20 }}>
-              &ldquo;I want to automate YouTube videos&rdquo;
+              50,000+ AI tools.<br />No map. No system.<br />No clarity.
+            </h2>
+            <p className="section-sub" style={{ margin: '0 auto' }}>
+              Teams waste weeks comparing tools. The ecosystem grows faster than anyone can track. What if someone mapped the entire landscape?
+            </p>
+            <div className="chaos-grid">
+              {['ChatGPT', 'Claude', 'Gemini', 'Midjourney', 'Runway', 'Cursor', 'ElevenLabs', 'Suno', 'Perplexity', 'Replicate', '…and 49,990 more'].map(t => (
+                <div key={t} className="chaos-tag">{t}</div>
+              ))}
             </div>
-            <div style={{ borderTop: '1px solid #1E1F23', paddingTop: 16 }}>
-              <div style={{ fontSize: 10, color: '#334155', fontWeight: 700, marginBottom: 12 }}>ATLAS GENERATES</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {WORKFLOW.map((s, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <div style={{
-                      width: 24, height: 24, borderRadius: '50%',
-                      background: `${s.color}22`, border: `1px solid ${s.color}44`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 9, fontWeight: 800, color: s.color, flexShrink: 0,
-                    }}>{i + 1}</div>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: s.color, minWidth: 90 }}>{s.tool}</span>
-                    <span style={{ fontSize: 12, color: '#475569' }}>→ {s.role}</span>
+          </div>
+        </Reveal>
+      </section>
+
+      <div className="divider" />
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* SCENE 3: THE SOLUTION */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      <section className="scene" style={{ minHeight: '90vh' }}>
+        <div className="glow-orb" style={{ width: 600, height: 600, background: 'rgba(59,130,246,0.04)', left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }} />
+        <Reveal>
+          <div style={{ textAlign: 'center', position: 'relative', zIndex: 2, maxWidth: 800 }}>
+            <div className="section-label" style={{ color: 'var(--accent-blue)' }}>THE SOLUTION</div>
+            <h2 className="section-title">
+              Describe the goal.<br />
+              <span style={{
+                background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+              }}>Atlas builds the stack.</span>
+            </h2>
+            <p className="section-sub" style={{ margin: '0 auto' }}>
+              Enter your objective. Atlas generates the optimal AI workflow — tools, order, and connections — in seconds.
+            </p>
+
+            <div className="solution-card">
+              <div className="solution-label">YOUR OBJECTIVE</div>
+              <div className="solution-goal">
+                {typed}<span style={{ color: 'var(--accent-blue)', animation: 'pulse 0.8s infinite' }}>|</span>
+              </div>
+              <div className="solution-label" style={{ marginTop: 8 }}>GENERATED STACK</div>
+              {WORKFLOW.map((s, i) => (
+                <div key={i} className="workflow-step">
+                  <div className="step-num" style={{ background: s.bg, border: `1px solid ${s.border}`, color: s.color }}>
+                    {String(i + 1).padStart(2, '0')}
                   </div>
-                ))}
-              </div>
+                  <div className="step-tool" style={{ color: s.color }}>{s.tool}</div>
+                  <div className="step-role">{s.role}</div>
+                  {i < WORKFLOW.length - 1 && <div className="step-arrow">→</div>}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
-      {/* ── SCENE 4: METRICS ──────────────────────────────────────── */}
-      <section style={{
-        minHeight: '50vh', position: 'relative',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '80px 20px',
-      }}>
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-          <Nebula x={30} y={50} color="#8b5cf6" size={500} opacity={0.06} />
-          <Nebula x={70} y={50} color="#06b6d4" size={400} opacity={0.05} />
-        </div>
-        <div style={{
-          display: 'flex', gap: 0,
-          background: '#111214', border: '1px solid #1E1F23',
-          borderRadius: 20, overflow: 'hidden',
-          maxWidth: 640, width: '100%',
-          position: 'relative', zIndex: 2,
-          flexWrap: 'wrap',
-        }}>
-          {METRICS.map((m, i) => (
-            <div key={m.l} style={{
-              flex: 1, minWidth: 130, padding: '36px 20px',
-              textAlign: 'center',
-              borderRight: i < METRICS.length - 1 ? '1px solid #1E1F23' : 'none',
-            }}>
-              <div style={{ fontSize: 30, fontWeight: 900, color: '#06b6d4' }}>{m.n}</div>
-              <div style={{ fontSize: 11, color: '#334155', marginTop: 4 }}>{m.l}</div>
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* SCENE 4: STATS */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      <div className="divider" />
+      <section className="stats-section">
+        <Reveal>
+          <div className="stats-row">
+            <div className="stat-item" ref={statTools.ref}>
+              <div className="stat-num blue">{statTools.value}</div>
+              <div className="stat-label">AI TOOLS</div>
             </div>
-          ))}
-        </div>
+            <div className="stat-item" ref={statCats.ref}>
+              <div className="stat-num cyan">{statCats.value}</div>
+              <div className="stat-label">CATEGORIES</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-num purple">∞</div>
+              <div className="stat-label">POSSIBLE STACKS</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-num green">24/7</div>
+              <div className="stat-label">LIVE DISCOVERY</div>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+      <div className="divider" />
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* SCENE 5: CONSTELLATIONS */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      <section className="scene" style={{ minHeight: '85vh', flexDirection: 'column' }}>
+        <div className="glow-orb" style={{ width: 500, height: 500, background: 'rgba(99,102,241,0.03)', left: '60%', top: '40%' }} />
+        <Reveal>
+          <div style={{ textAlign: 'center', position: 'relative', zIndex: 2 }}>
+            <div className="section-label">NAVIGATE BY CONSTELLATION</div>
+            <h2 className="section-title">Every star has a place.</h2>
+            <p className="section-sub" style={{ margin: '0 auto' }}>
+              8 constellations. Thousands of tools. Navigate the AI universe by domain.
+            </p>
+            <div className="constellation-grid">
+              {CONSTELLATIONS.map(c => (
+                <div key={c.name} className="constellation-card">
+                  <div className="constellation-node" style={{ background: c.c, boxShadow: `0 0 10px ${c.c}`, color: c.c }} />
+                  <div className="constellation-name">{c.name}</div>
+                  <div className="constellation-count">{c.count} tools</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
       </section>
 
-      {/* ── SCENE 5: SYSTEM ARCHITECTURE ─────────────────────────── */}
-      <section style={{
-        minHeight: '80vh', position: 'relative',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '120px 20px',
-      }}>
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-          <Nebula x={50} y={50} color="#3b82f6" size={800} opacity={0.07} />
-        </div>
-        <div style={{ textAlign: 'center', position: 'relative', zIndex: 2, maxWidth: 900, width: '100%' }}>
-          <div className="label-tag" style={{ marginBottom: 24 }}>SYSTEM ARCHITECTURE</div>
-          <div className="section-headline" style={{
-            background: 'linear-gradient(135deg, #f8fafc, #3b82f6)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            marginBottom: 56,
-          }}>The Intelligence Stack</div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-            gap: 10,
-          }}>
-            {STACK_LAYERS.map((l, i) => (
-              <div key={l.layer} style={{
-                background: `${l.color}08`,
-                border: `1px solid ${l.color}22`,
-                borderRadius: 12, padding: '20px 16px',
-                textAlign: 'center',
-                animation: `fadeUp 0.5s ${i * 0.08}s both`,
-                transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: l.color, marginBottom: 8 }}>{l.layer}</div>
-                <div style={{ fontSize: 10, color: '#334155', lineHeight: 1.6 }}>{l.desc}</div>
-              </div>
-            ))}
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* SCENE 6: FEATURED TOOLS */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      <section className="scene" style={{ minHeight: '75vh', flexDirection: 'column' }}>
+        <Reveal>
+          <div style={{ textAlign: 'center', position: 'relative', zIndex: 2, width: '100%' }}>
+            <div className="section-label">SIGNAL FROM THE ATLAS</div>
+            <h2 className="section-title">Trending Tools</h2>
+            <div className="tools-scroll">
+              {FEATURED_TOOLS.map(t => (
+                <Link key={t.name} href={`/tools/${t.name.toLowerCase().replace(/\s+/g, '-')}`} className="tool-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <div className="tool-card-line" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: t.c, opacity: 0, transition: 'opacity 0.4s' }} />
+                  <div className="tool-icon" style={{ background: `${t.c}11`, color: t.c, border: `1px solid ${t.c}22` }}>{t.icon}</div>
+                  <div className="tool-name">{t.name}</div>
+                  <div className="tool-cat">{t.cat}</div>
+                  <div className="tool-desc">{t.desc}</div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
-      {/* ── SCENE 6: NETWORK EFFECT ──────────────────────────────── */}
-      <section style={{
-        minHeight: '70vh', position: 'relative',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '120px 20px',
-      }}>
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-          <Nebula x={50} y={50} color="#22c55e" size={600} opacity={0.07} />
-        </div>
-        <div style={{ textAlign: 'center', position: 'relative', zIndex: 2, maxWidth: 640 }}>
-          <div className="label-tag" style={{ marginBottom: 24, color: '#22c55e' }}>NETWORK EFFECT</div>
-          <div className="section-headline" style={{
-            background: 'linear-gradient(135deg, #f8fafc, #22c55e)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            marginBottom: 48,
-          }}>
-            More tools →<br />Better graph →<br />Stronger ATLAS
+      <div className="divider" />
+
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* SCENE 7: ARCHITECTURE */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      <section className="scene" style={{ minHeight: '75vh', flexDirection: 'column' }}>
+        <div className="glow-orb" style={{ width: 500, height: 500, background: 'rgba(59,130,246,0.03)', left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }} />
+        <Reveal>
+          <div style={{ textAlign: 'center', position: 'relative', zIndex: 2 }}>
+            <div className="section-label">UNDER THE HOOD</div>
+            <h2 className="section-title">The Intelligence Stack</h2>
+            <p className="section-sub" style={{ margin: '0 auto' }}>
+              Six layers. One system. Designed for discovery.
+            </p>
+            <div className="system-grid">
+              {SYSTEM_LAYERS.map(l => (
+                <div key={l.name} className="system-cell">
+                  <div className="system-icon">{l.icon}</div>
+                  <div className="system-layer" style={{ color: l.c }}>{l.name}</div>
+                  <div className="system-desc">{l.desc}</div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {['Discover', 'Graph', 'Recommend', 'Generate', 'Share', 'Repeat'].map((s, i, arr) => (
-              <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{
-                  background: '#111214', border: '1px solid #22c55e22',
-                  borderRadius: 8, padding: '8px 16px',
-                  fontSize: 12, fontWeight: 700, color: '#22c55e',
-                  animation: `floatY ${3 + i * 0.3}s ${i * 0.15}s infinite ease-in-out`,
-                }}>{s}</div>
-                {i < arr.length - 1 && <span style={{ color: '#1e3a5f', fontSize: 14 }}>→</span>}
-              </div>
-            ))}
-          </div>
-        </div>
+        </Reveal>
       </section>
 
-      {/* ── SCENE 7: CTA ──────────────────────────────────────────── */}
-      <section style={{
-        minHeight: '80vh', position: 'relative',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '120px 20px',
-      }}>
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-          <Nebula x={50} y={50} color="#06b6d4" size={1000} opacity={0.12} />
-        </div>
-        <div style={{ textAlign: 'center', position: 'relative', zIndex: 2 }}>
-          {/* Atlas logo orb */}
-          <div style={{
-            width: 80, height: 80, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 28, fontWeight: 900, color: '#fff',
-            margin: '0 auto 40px',
-            boxShadow: '0 0 60px #06b6d444',
-            animation: 'corePulse 3s infinite ease-in-out',
-          }}>A</div>
-
-          <div className="section-headline" style={{
-            background: 'linear-gradient(135deg, #f8fafc 30%, #06b6d4)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            marginBottom: 24,
-            fontSize: 'clamp(36px, 5.5vw, 80px)',
-          }}>
-            Enter Atlas
+      {/* ══════════════════════════════════════════════════════════ */}
+      {/* SCENE 8: CTA */}
+      {/* ══════════════════════════════════════════════════════════ */}
+      <section className="scene cta-section" style={{ minHeight: '85vh' }}>
+        <div className="glow-orb" style={{ width: 900, height: 900, background: 'rgba(59,130,246,0.04)', left: '50%', top: '50%', transform: 'translate(-50%,-50%)' }} />
+        <Reveal>
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <div className="cta-orb-wrap">
+              <div className="cta-orb"><span>A</span></div>
+              <div className="cta-orb-ring" />
+            </div>
+            <h2 className="section-title" style={{ textAlign: 'center', fontSize: 'clamp(40px, 7vw, 88px)' }}>
+              <span style={{
+                background: 'linear-gradient(135deg, var(--text-primary) 10%, var(--accent-blue) 50%, var(--accent-purple) 90%)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+                backgroundSize: '200% 200%', animation: 'gradientShift 6s ease infinite',
+              }}>Enter the Atlas</span>
+            </h2>
+            <p className="section-sub" style={{ textAlign: 'center', margin: '24px auto 56px' }}>
+              Google indexed the web.<br />Atlas indexes intelligence.
+            </p>
+            <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link href="/tools" className="btn-primary" style={{ padding: '16px 44px', fontSize: 14, textDecoration: 'none' }}>
+                Launch Atlas →
+              </Link>
+              <Link href="/categories" className="btn-ghost" style={{ padding: '16px 44px', fontSize: 14, textDecoration: 'none' }}>
+                Explore Galaxy Map
+              </Link>
+            </div>
           </div>
-
-          <p style={{
-            fontSize: 15, color: '#334155',
-            margin: '0 auto 48px', maxWidth: 380, lineHeight: 1.8,
-          }}>
-            The AI Workflow Infrastructure Layer.<br />
-            Build systems. Not just find tools.
-          </p>
-
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link href="/tools" style={{
-              background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
-              border: 'none', color: '#fff', borderRadius: 10,
-              padding: '16px 40px', fontWeight: 800, fontSize: 15,
-              textDecoration: 'none', boxShadow: '0 0 50px #06b6d440',
-              letterSpacing: 0.3, display: 'inline-block',
-            }}>
-              Launch Atlas →
-            </Link>
-            <Link href="/generate" style={{
-              background: 'transparent', border: '1px solid #1E1F23',
-              color: '#8F8F93', borderRadius: 10,
-              padding: '16px 40px', fontWeight: 700, fontSize: 15,
-              textDecoration: 'none', display: 'inline-block',
-            }}>
-              Generate Stack
-            </Link>
-          </div>
-        </div>
+        </Reveal>
       </section>
 
-      {/* Footer */}
-      <footer style={{
-        borderTop: '1px solid #1E1F23', padding: '32px 20px',
-        textAlign: 'center',
-      }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 900, color: '#8F8F93' }}>
-            ATLAS OS · AIAstralis · 2026
-          </div>
-          <div style={{ fontSize: 11, color: '#334155' }}>
-            Google indexed the web. Atlas indexes intelligence.
-          </div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            {['Tools', 'Stacks', 'Categories', 'Generate'].map(l => (
-              <Link key={l} href={`/${l.toLowerCase()}`} style={{ fontSize: 12, color: '#334155', textDecoration: 'none' }}>{l}</Link>
-            ))}
-          </div>
+      {/* ── FOOTER ── */}
+      <footer className="footer">
+        <div className="footer-left">ATLAS · 2025 · The Map of AI</div>
+        <div className="footer-right">
+          <Link href="/tools">Tools</Link>
+          <Link href="/stacks">Stacks</Link>
+          <Link href="/generate">Generator</Link>
+          <Link href="/categories">Galaxy</Link>
         </div>
       </footer>
     </div>
